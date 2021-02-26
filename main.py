@@ -1,0 +1,196 @@
+# import and initialize some stuff
+import pygame
+import random
+import os
+
+# import numpy as np
+# from PIL import Image
+
+# current plan is to crop image twice then concatenate the images together
+# to simulate line removal
+
+pygame.init()
+
+# set some global constants
+BACKGROUND = pygame.image.load(os.path.join('img', 'background.png'))
+TILE_SIZE = 32
+SIZE = WIDTH, HEIGHT = 640, 640
+PIECE_BOUNDS = PIECE_BOUND_LEFT, PIECE_BOUND_RIGHT = 160, 480
+BLACK = 0, 0, 0
+GREEN = 0, 100, 0
+FPS = 60
+
+
+class Piece:
+    def __init__(self):
+        self.start = self.x, self.y = WIDTH / 2 // TILE_SIZE * TILE_SIZE - TILE_SIZE, 0
+        self.time_between_drops = 1000  # in milliseconds
+        self.time_since_move = 0
+        self.image = pygame.image.load(os.path.join('img', 'piece' + str(random.randint(1, 7)) + '.png'))
+        self.mask = pygame.mask.from_surface(self.image)
+        self.width, self.height = self.mask.get_size()
+        self.time_since_down = 0
+        self.time_since_side = 0
+        self.set_pieces = []
+
+    def handle_pressed_input(self, key_down):
+        # left and right should be have 300 ms delay then 100 ms intervals not yet though
+        if key_down[pygame.K_LEFT] and not self.check_side('left'):
+            if self.time_since_side > 110:
+                # make sure we stay in bounds
+                if self.x + self.get_mask_rect()[0] - TILE_SIZE >= PIECE_BOUND_LEFT:
+                    self.x -= TILE_SIZE
+                    self.time_since_side = 0
+        if key_down[pygame.K_RIGHT] and not self.check_side('right'):
+            if self.time_since_side > 110:
+                # make sure we stay in bounds
+                if self.x + self.get_mask_rect()[2] + TILE_SIZE <= PIECE_BOUND_RIGHT:
+                    self.x += TILE_SIZE
+                    self.time_since_side = 0
+        # down we want to repeat it quickly and instantly but not too fast
+        if key_down[pygame.K_DOWN]:
+            if self.time_since_down > 50:
+                # make sure we don't move through a block
+                if not self.handle_collisions():
+                    self.time_since_down = 0
+                    self.y += TILE_SIZE
+
+    def handle_key_press(self, key):
+        key = pygame.key.name(key)
+        if key == "up":
+            self.image = pygame.transform.rotate(self.image, 90)
+            self.mask = pygame.mask.from_surface(self.image)
+            # if a rotation puts the piece out of bounds move piece over
+            if self.x + self.mask.get_rect()[2] > PIECE_BOUND_RIGHT:
+                self.x -= (self.mask.get_rect()[2] + self.x) - PIECE_BOUND_RIGHT
+                # here the logic is we get the amount of space between the border
+                # and the right side of the shape (using difference via subtraction)
+                # and move it to the left (-) by that amount
+            elif self.x + self.mask.get_rect()[0] < PIECE_BOUND_LEFT:
+                # same here but its plus (to go right) and since the border is
+                # on the right of the shape instead of left we have to swap the two values positions
+                self.x += PIECE_BOUND_LEFT - (self.mask.get_rect()[0] + self.x)
+
+    def handle_collisions(self):
+        for set_piece in self.set_pieces:
+            for rect in self.get_shape_rects():
+                for set_rect in set_piece.get_shape_rects():
+                    # it is directly above the other piece
+                    if rect.centerx - set_rect.centerx == 0 and -5 < set_rect.centery - rect.centery < 35:
+                        return True
+        return False
+
+    def check_side(self, side):
+        for set_piece in self.set_pieces:
+            for rect in self.get_shape_rects():
+                for set_rect in set_piece.get_shape_rects():
+                    # check if piece left or right
+                    distance = rect.centerx - set_rect.centerx
+                    same_line = rect.centery - set_rect.centery == 0
+                    print(' same line: ' + str(same_line))
+                    if (-5 < distance < 35 and side == 'left' or 5 > distance > -35 and side == 'right') and same_line:
+                        print(' collided ' + side)
+                        return True
+        return False
+
+    def handle_movement(self):
+        if self.time_since_move > self.time_between_drops:
+            self.y += TILE_SIZE
+            self.time_since_move = 0
+            # in case we go below the ground
+            if self.y + self.get_mask_rect()[3] > HEIGHT:
+                self.y = HEIGHT - self.get_mask_rect()[3]
+
+    def get_rect(self):
+        return self.x, self.y, self.width, self.height
+
+    def increase_time(self, time):
+        self.time_since_down += time
+        self.time_since_side += time
+        self.time_since_move += time
+
+    def get_mask_rect(self):  # unlike a pygame rect this is left top (x1, y1), bottom right (x2, y2)
+        xs = []  # and in relation to its own rectangles position
+        ys = []
+        for i in range(1, self.width // TILE_SIZE + 1):
+            for j in range(1, self.height // TILE_SIZE + 1):
+                x, y = i * TILE_SIZE - TILE_SIZE // 2, j * TILE_SIZE - TILE_SIZE // 2
+                if self.mask.get_at((x, y)):
+                    xs.extend((x - TILE_SIZE / 2, x + TILE_SIZE / 2))
+                    ys.extend((y - TILE_SIZE / 2, y + TILE_SIZE / 2))
+        return min(xs), min(ys), max(xs), max(ys)  # returns x1, y1, x2, y2
+
+    def get_shape_rects(self):  # this will return all rectangles in the shape
+        rects = []
+        for i in range(1, self.width // TILE_SIZE + 1):
+            for j in range(1, self.height // TILE_SIZE + 1):
+                x, y = i * TILE_SIZE - TILE_SIZE // 2, j * TILE_SIZE - TILE_SIZE // 2
+                if self.mask.get_at((x, y)):
+                    # added a one pixel buffer because to the rect because it hasn't collided
+                    # until the shape is in the other shape
+                    rect = (self.x + x - (TILE_SIZE // 2), self.y + y - (TILE_SIZE // 2),
+                            TILE_SIZE, TILE_SIZE)
+                    rects.append(pygame.Rect(rect))
+        return rects
+
+
+if __name__ == '__main__':  # running the game
+    # setting some values that will be useful
+
+    screen = pygame.display.set_mode(SIZE)
+    pygame.display.set_caption('TETRIS')
+
+    # creating the first piece
+    piece = Piece()
+    set_pieces = {'pieces': [],
+                  'blits': []}
+
+    # game loop
+    run = True
+    clock = pygame.time.Clock()
+    while run:
+        # regulate game speed and calculate some elapsed time for inputs
+        clock.tick(FPS)
+        piece.increase_time(clock.get_time())
+        # check events
+        for event in pygame.event.get():
+
+            # close window
+            if event.type == pygame.QUIT:
+                run = False
+
+            # for single key presses
+            elif event.type == pygame.KEYDOWN:
+                piece.handle_key_press(event.key)
+
+        # check if key was pressed
+        pressed = pygame.key.get_pressed()
+        piece.handle_pressed_input(pressed)
+
+        # check for collisions
+        coords = x1, y1, x2, y2 = piece.get_mask_rect()
+        if piece.y + y2 == HEIGHT:
+            # create new piece because it touched the bottom
+            set_pieces['blits'].append((piece.image, piece.get_rect()))
+            set_pieces['pieces'].append(piece)
+            piece = Piece()
+            piece.set_pieces = set_pieces['pieces']
+        else:
+            # see if it has collided with other pieces from bottom
+            if piece.handle_collisions():
+                # if so set it down and create a new piece
+                set_pieces['blits'].append((piece.image, piece.get_rect()))
+                set_pieces['pieces'].append(piece)
+                piece = Piece()
+                piece.set_pieces = set_pieces['pieces']
+
+        # move piece
+        piece.handle_movement()
+
+        # update screen
+        screen.blit(BACKGROUND, (0, 0))
+        screen.blit(piece.image, piece.get_rect())
+        screen.blits(set_pieces['blits'])
+        pygame.display.update()
+
+    pygame.quit()
