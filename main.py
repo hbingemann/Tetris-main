@@ -132,6 +132,9 @@ class Piece:
                     rects.append(pygame.Rect(rect))
         return rects
 
+    def remove_lines(self, lines):
+        pass
+
 
 def remove_rows(pieces):
     ys = []
@@ -142,7 +145,9 @@ def remove_rows(pieces):
     ys.sort()
     groups = [list(j) for i, j in itertools.groupby(ys)]
     rows = [group[0] for group in groups if len(group) == 10]
-    # now remove all rects at all positions in rows
+    if len(rows) > 0:
+        for set_piece in pieces:
+            set_piece.remove_lines(rows)
     return
 
 
