@@ -2,6 +2,7 @@
 import pygame
 import random
 import os
+import itertools
 
 # import numpy as np
 # from PIL import Image
@@ -87,9 +88,7 @@ class Piece:
                     # check if piece left or right
                     distance = rect.centerx - set_rect.centerx
                     same_line = rect.centery - set_rect.centery == 0
-                    print(' same line: ' + str(same_line))
                     if (-5 < distance < 35 and side == 'left' or 5 > distance > -35 and side == 'right') and same_line:
-                        print(' collided ' + side)
                         return True
         return False
 
@@ -98,7 +97,7 @@ class Piece:
             self.y += TILE_SIZE
             self.time_since_move = 0
             # in case we go below the ground
-            if self.y + self.get_mask_rect()[3] > HEIGHT:
+            if self.y + self.get_mask_rect()[3] >= HEIGHT:
                 self.y = HEIGHT - self.get_mask_rect()[3]
 
     def get_rect(self):
@@ -132,6 +131,28 @@ class Piece:
                             TILE_SIZE, TILE_SIZE)
                     rects.append(pygame.Rect(rect))
         return rects
+
+
+def remove_rows(pieces):
+    ys = []
+    for set_piece in pieces:
+        for rect in set_piece.get_shape_rects():
+            ys.append(rect.centery)
+    # all y positions (rows) with ten squares
+    ys.sort()
+    groups = [list(j) for i, j in itertools.groupby(ys)]
+    rows = [group[0] for group in groups if len(group) == 10]
+    # now remove all rects at all positions in rows
+    return
+
+
+def create_new_piece(old_piece):
+    set_pieces['blits'].append((old_piece.image, old_piece.get_rect()))
+    set_pieces['pieces'].append(old_piece)
+    _new_piece = Piece()
+    remove_rows(set_pieces['pieces'])
+    piece.set_pieces = set_pieces['pieces']
+    return _new_piece
 
 
 if __name__ == '__main__':  # running the game
@@ -170,19 +191,13 @@ if __name__ == '__main__':  # running the game
         # check for collisions
         coords = x1, y1, x2, y2 = piece.get_mask_rect()
         if piece.y + y2 == HEIGHT:
-            # create new piece because it touched the bottom
-            set_pieces['blits'].append((piece.image, piece.get_rect()))
-            set_pieces['pieces'].append(piece)
-            piece = Piece()
-            piece.set_pieces = set_pieces['pieces']
+            # create a new piece because it touched the bottom
+            piece = create_new_piece(piece)
         else:
             # see if it has collided with other pieces from bottom
             if piece.handle_collisions():
                 # if so set it down and create a new piece
-                set_pieces['blits'].append((piece.image, piece.get_rect()))
-                set_pieces['pieces'].append(piece)
-                piece = Piece()
-                piece.set_pieces = set_pieces['pieces']
+                piece = create_new_piece(piece)
 
         # move piece
         piece.handle_movement()
