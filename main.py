@@ -151,13 +151,13 @@ def remove_rows(pieces):
     return
 
 
-def create_new_piece(old_piece):
-    set_pieces['blits'].append((old_piece.image, old_piece.get_rect()))
-    set_pieces['pieces'].append(old_piece)
+def create_new_piece(old_piece, blits, pieces):
+    blits.append((old_piece.image, old_piece.get_rect()))
+    pieces.append(old_piece)
     _new_piece = Piece()
-    remove_rows(set_pieces['pieces'])
-    piece.set_pieces = set_pieces['pieces']
-    return _new_piece
+    remove_rows(pieces)
+    _new_piece.set_pieces = pieces
+    return _new_piece, blits, pieces
 
 
 if __name__ == '__main__':  # running the game
@@ -168,8 +168,8 @@ if __name__ == '__main__':  # running the game
 
     # creating the first piece
     piece = Piece()
-    set_pieces = {'pieces': [],
-                  'blits': []}
+    set_piece_blits = []
+    set_pieces = []
 
     # game loop
     run = True
@@ -197,12 +197,12 @@ if __name__ == '__main__':  # running the game
         coords = x1, y1, x2, y2 = piece.get_mask_rect()
         if piece.y + y2 == HEIGHT:
             # create a new piece because it touched the bottom
-            piece = create_new_piece(piece)
+            piece, set_piece_blits, set_pieces = create_new_piece(piece, set_piece_blits, set_pieces)
         else:
             # see if it has collided with other pieces from bottom
             if piece.handle_collisions():
                 # if so set it down and create a new piece
-                piece = create_new_piece(piece)
+                piece, set_piece_blits, set_pieces = create_new_piece(piece, set_piece_blits, set_pieces)
 
         # move piece
         piece.handle_movement()
@@ -210,7 +210,7 @@ if __name__ == '__main__':  # running the game
         # update screen
         screen.blit(BACKGROUND, (0, 0))
         screen.blit(piece.image, piece.get_rect())
-        screen.blits(set_pieces['blits'])
+        screen.blits(set_piece_blits)
         pygame.display.update()
 
     pygame.quit()
