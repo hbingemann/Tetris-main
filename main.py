@@ -5,7 +5,7 @@ import os
 import itertools
 
 # import numpy as np
-# from PIL import Image
+from PIL import Image
 
 # current plan is to crop image twice then concatenate the images together
 # to simulate line removal
@@ -13,7 +13,7 @@ import itertools
 pygame.init()
 
 # set some global constants
-BACKGROUND = pygame.image.load(os.path.join('img', 'background.png'))
+BACKGROUND = pygame.image.load(os.path.join('img', 'Background.png'))
 TILE_SIZE = 32
 SIZE = WIDTH, HEIGHT = 640, 640
 PIECE_BOUNDS = PIECE_BOUND_LEFT, PIECE_BOUND_RIGHT = 160, 480
@@ -21,35 +21,45 @@ BLACK = 0, 0, 0
 GREEN = 0, 100, 0
 FPS = 60
 
+#
+# -------------- CLASSES ------------------------------------------------------------
+#
+
 
 class Piece:
     def __init__(self):
         self.start = self.x, self.y = WIDTH / 2 // TILE_SIZE * TILE_SIZE - TILE_SIZE, 0
         self.time_between_drops = 1000  # in milliseconds
         self.time_since_move = 0
-        self.image = pygame.image.load(os.path.join('img', 'piece' + str(random.randint(1, 7)) + '.png'))
+        # random.randint(1, 7)
+        self.image_file = os.path.join('img', 'piece' + str(7) + '.png')
+        self.image = pygame.image.load(self.image_file)
         self.mask = pygame.mask.from_surface(self.image)
         self.width, self.height = self.mask.get_size()
         self.time_since_down = 0
         self.time_since_side = 0
         self.set_pieces = []
 
-    def handle_pressed_input(self, key_down):
+    def update_dimensions(self):
+        self.mask = pygame.mask.from_surface(self.image)
+        self.width, self.height = self.mask.get_size()
+
+    def handle_keys_down(self, keys_down):
         # left and right should be have 300 ms delay then 100 ms intervals not yet though
-        if key_down[pygame.K_LEFT] and not self.check_side('left'):
+        if keys_down[pygame.K_LEFT] and not self.check_side('left'):
             if self.time_since_side > 110:
                 # make sure we stay in bounds
                 if self.x + self.get_mask_rect()[0] - TILE_SIZE >= PIECE_BOUND_LEFT:
                     self.x -= TILE_SIZE
                     self.time_since_side = 0
-        if key_down[pygame.K_RIGHT] and not self.check_side('right'):
+        if keys_down[pygame.K_RIGHT] and not self.check_side('right'):
             if self.time_since_side > 110:
                 # make sure we stay in bounds
                 if self.x + self.get_mask_rect()[2] + TILE_SIZE <= PIECE_BOUND_RIGHT:
                     self.x += TILE_SIZE
                     self.time_since_side = 0
         # down we want to repeat it quickly and instantly but not too fast
-        if key_down[pygame.K_DOWN]:
+        if keys_down[pygame.K_DOWN]:
             if self.time_since_down > 50:
                 # make sure we don't move through a block
                 if not self.handle_collisions():
@@ -132,8 +142,34 @@ class Piece:
                     rects.append(pygame.Rect(rect))
         return rects
 
-    def remove_lines(self, lines):
-        pass
+    def remove_rows(self, rows):
+        high = min(rows) - TILE_SIZE // 2
+        low = max(rows) + TILE_SIZE // 2
+        # first get the pygame image as pillow image stored in the variable im
+        pil_string_image = pygame.image.tostring(self.image, "RGBA", False)
+        im = Image.frombytes("RGBA", (self.width, self.height), pil_string_image)
+        # now define upper and lower regions to crop
+        upper = (0, 0, self.width, high - self.y)
+        lower = (0, low - self.y, self.width, self.height)
+        # get those new regions as new images
+        top = im.crop(upper)
+        bottom = im.crop(lower)
+        # now concatenate or combine them
+        new_im = self.get_concat(top, bottom)
+        # now convert back to pygame image and update the pieces image
+        size, mode = new_im.size, new_im.mode
+        pygame_string_image = new_im.tobytes()
+        self.image = pygame.image.fromstring(pygame_string_image, size, mode)
+        self.update_dimensions()
+
+    def get_concat(self, im1, im2):  # this merges images on top of each other
+        dst = Image.new('RGBA', (im1.width, im1.height + im2.height))
+        dst.paste(im1, (0, 0))
+        dst.paste(im2, (0, im1.height))
+        return dst
+#
+# --------- FUNCTIONS -------------------------------------------------------
+#
 
 
 def remove_rows(pieces):
@@ -147,17 +183,21 @@ def remove_rows(pieces):
     rows = [group[0] for group in groups if len(group) == 10]
     if len(rows) > 0:
         for set_piece in pieces:
-            set_piece.remove_lines(rows)
+            set_piece.remove_rows(rows)
     return
 
 
-def create_new_piece(old_piece, blits, pieces):
-    blits.append((old_piece.image, old_piece.get_rect()))
+def create_new_piece(old_piece, pieces):
     pieces.append(old_piece)
     _new_piece = Piece()
     remove_rows(pieces)
+    blits = [(set_piece.image, set_piece.get_rect()) for set_piece in pieces]
     _new_piece.set_pieces = pieces
     return _new_piece, blits, pieces
+
+#
+# -------------- MAIN LOOP ------------------------------------------------------
+#
 
 
 if __name__ == '__main__':  # running the game
@@ -191,18 +231,18 @@ if __name__ == '__main__':  # running the game
 
         # check if key was pressed
         pressed = pygame.key.get_pressed()
-        piece.handle_pressed_input(pressed)
+        piece.handle_keys_down(pressed)
 
         # check for collisions
         coords = x1, y1, x2, y2 = piece.get_mask_rect()
-        if piece.y + y2 == HEIGHT:
+        if piece.y + y2 >= HEIGHT:
             # create a new piece because it touched the bottom
-            piece, set_piece_blits, set_pieces = create_new_piece(piece, set_piece_blits, set_pieces)
+            piece, set_piece_blits, set_pieces = create_new_piece(piece,  set_pieces)
         else:
             # see if it has collided with other pieces from bottom
             if piece.handle_collisions():
                 # if so set it down and create a new piece
-                piece, set_piece_blits, set_pieces = create_new_piece(piece, set_piece_blits, set_pieces)
+                piece, set_piece_blits, set_pieces = create_new_piece(piece,  set_pieces)
 
         # move piece
         piece.handle_movement()
