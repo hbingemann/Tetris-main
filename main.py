@@ -7,8 +7,7 @@ import itertools
 # import numpy as np
 from PIL import Image
 
-# current plan is to crop image twice then concatenate the images together
-# to simulate line removal
+# TODO: split up all squares and do gravity
 
 pygame.init()
 
