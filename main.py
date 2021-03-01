@@ -21,6 +21,7 @@ BLACK = 0, 0, 0
 GREEN = 0, 100, 0
 FPS = 60
 
+
 #
 # -------------- CLASSES ------------------------------------------------------------
 #
@@ -32,7 +33,7 @@ class Piece:
         self.time_between_drops = 1000  # in milliseconds
         self.time_since_move = 0
         # random.randint(1, 7)
-        self.image_file = os.path.join('img', 'piece' + str(7) + '.png')
+        self.image_file = os.path.join('img', 'piece' + str(random.randint(1, 7)) + '.png')
         self.image = pygame.image.load(self.image_file)
         self.mask = pygame.mask.from_surface(self.image)
         self.width, self.height = self.mask.get_size()
@@ -144,7 +145,15 @@ class Piece:
 
     def remove_rows(self, rows):
         high = min(rows) - TILE_SIZE // 2
+        if high < self.y:
+            high = self.y
+        if high > self.y + self.height:
+            return
         low = max(rows) + TILE_SIZE // 2
+        if low < self.y:
+            return
+        elif low > self.y + self.height:
+            low = self.y + self.height
         # first get the pygame image as pillow image stored in the variable im
         pil_string_image = pygame.image.tostring(self.image, "RGBA", False)
         im = Image.frombytes("RGBA", (self.width, self.height), pil_string_image)
@@ -157,16 +166,30 @@ class Piece:
         # now concatenate or combine them
         new_im = self.get_concat(top, bottom)
         # now convert back to pygame image and update the pieces image
-        size, mode = new_im.size, new_im.mode
-        pygame_string_image = new_im.tobytes()
-        self.image = pygame.image.fromstring(pygame_string_image, size, mode)
-        self.update_dimensions()
+        if new_im is not None:
+            size, mode = new_im.size, new_im.mode
+            pygame_string_image = new_im.tobytes()
+            self.image = pygame.image.fromstring(pygame_string_image, size, mode)
+            self.y += self.height - new_im.height
+            self.update_dimensions()
+        else:
+            self.image = None
 
     def get_concat(self, im1, im2):  # this merges images on top of each other
-        dst = Image.new('RGBA', (im1.width, im1.height + im2.height))
-        dst.paste(im1, (0, 0))
-        dst.paste(im2, (0, im1.height))
-        return dst
+        if im1.height > 10 and im2.height > 10:
+            dst = Image.new('RGBA', (im1.width, im1.height + im2.height))
+            dst.paste(im1, (0, 0))
+            dst.paste(im2, (0, im1.height))
+            return dst
+        else:
+            if im1.height < 10 < im2.height:
+                return im2
+            elif im2.height < 10 < im1.height:
+                return im1
+            else:
+                return None
+
+
 #
 # --------- FUNCTIONS -------------------------------------------------------
 #
@@ -191,9 +214,16 @@ def create_new_piece(old_piece, pieces):
     pieces.append(old_piece)
     _new_piece = Piece()
     remove_rows(pieces)
-    blits = [(set_piece.image, set_piece.get_rect()) for set_piece in pieces]
+    blits = [(set_piece.image, set_piece.get_rect()) for set_piece in pieces if set_piece.image is not None]
+    pieces = [set_piece for set_piece in pieces if set_piece.image is not None]
     _new_piece.set_pieces = pieces
     return _new_piece, blits, pieces
+
+
+def update_set_pieces(pieces):
+    updated_pieces = [set_piece for set_piece in pieces if set_piece.image is not None]
+    return updated_pieces
+
 
 #
 # -------------- MAIN LOOP ------------------------------------------------------
@@ -218,6 +248,7 @@ if __name__ == '__main__':  # running the game
         # regulate game speed and calculate some elapsed time for inputs
         clock.tick(FPS)
         piece.increase_time(clock.get_time())
+
         # check events
         for event in pygame.event.get():
 
@@ -236,18 +267,20 @@ if __name__ == '__main__':  # running the game
         # check for collisions
         coords = x1, y1, x2, y2 = piece.get_mask_rect()
         if piece.y + y2 >= HEIGHT:
+            piece.y = HEIGHT - y2
             # create a new piece because it touched the bottom
-            piece, set_piece_blits, set_pieces = create_new_piece(piece,  set_pieces)
+            piece, set_piece_blits, set_pieces = create_new_piece(piece, set_pieces)
         else:
             # see if it has collided with other pieces from bottom
             if piece.handle_collisions():
                 # if so set it down and create a new piece
-                piece, set_piece_blits, set_pieces = create_new_piece(piece,  set_pieces)
+                piece, set_piece_blits, set_pieces = create_new_piece(piece, set_pieces)
 
         # move piece
         piece.handle_movement()
 
         # update screen
+        set_pieces = update_set_pieces(set_pieces)
         screen.blit(BACKGROUND, (0, 0))
         screen.blit(piece.image, piece.get_rect())
         screen.blits(set_piece_blits)
