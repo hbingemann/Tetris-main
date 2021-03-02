@@ -7,7 +7,7 @@ import itertools
 # import numpy as np
 from PIL import Image
 
-# TODO: split up all squares and do gravity
+# TODO: do gravity on all pieces to drop them maybe tetris physics may say otherwise
 
 pygame.init()
 
