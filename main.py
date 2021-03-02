@@ -37,7 +37,7 @@ class Piece:
         self.time_between_drops = 1000  # in milliseconds
         self.time_since_move = 0
         # random.randint(1, 7)
-        self.image_file = os.path.join('img', 'piece' + str(random.randint(1, 7)) + '.png')
+        self.image_file = os.path.join('img', 'piece' + str(7) + '.png')
         self.image = pygame.image.load(self.image_file)
         self.mask = pygame.mask.from_surface(self.image)
         self.width, self.height = self.mask.get_size()
@@ -147,6 +147,13 @@ class Piece:
                     rects.append(pygame.Rect(rect))
         return rects
 
+    def move_down(self, rows):
+        print('moving down')
+        # for every row below move down tile_size
+        for row in rows:
+            if row > self.y + self.get_mask_rect()[1]:
+                self.y += TILE_SIZE
+
     def remove_rows(self, rows):
         high = min(rows) - TILE_SIZE // 2
         if high < self.y:
@@ -170,14 +177,16 @@ class Piece:
         # now concatenate or combine them
         new_im = self.get_concat(top, bottom)
         # now convert back to pygame image and update the pieces image
-        if new_im is not None:
+        if new_im is not None and new_im.height != self.height:
             size, mode = new_im.size, new_im.mode
             pygame_string_image = new_im.tobytes()
             self.image = pygame.image.fromstring(pygame_string_image, size, mode)
             self.y += self.height - new_im.height
             self.update_dimensions()
-        else:
+        elif new_im is None:
             self.image = None
+        elif new_im.height == self.height:  # the image was unaffected by removed rows
+            self.move_down(rows)
 
     def get_concat(self, im1, im2):  # this merges images on top of each other
         if im1.height > 10 and im2.height > 10:
@@ -208,7 +217,7 @@ def remove_rows(pieces):
     ys.sort()
     groups = [list(j) for i, j in itertools.groupby(ys)]
     rows = [group[0] for group in groups if len(group) == 10]
-    if len(rows) > 0:
+    if len(rows) > 0:  # if there are rows to be removed
         for set_piece in pieces:
             set_piece.remove_rows(rows)
     return
