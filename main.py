@@ -7,7 +7,12 @@ import itertools
 # import numpy as np
 from PIL import Image
 
-# TODO: do gravity on all pieces to drop them maybe tetris physics may say otherwise
+# TODO: better graphics
+# TODO: pieces don't instantly place themselves 
+# TODO: physics I think are correct at the moment but research/testing would be good
+# TODO: add holding
+# TODO: add hard drop
+# TODO: add 
 
 pygame.init()
 
