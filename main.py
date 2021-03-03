@@ -78,7 +78,11 @@ class Piece:
             self.image = pygame.transform.rotate(self.image, 90)
             self.mask = pygame.mask.from_surface(self.image)
             # if a rotation puts the piece out of bounds move piece over
-            if self.x + self.mask.get_rect()[2] > PIECE_BOUND_RIGHT:
+            if self.piece_within():
+                # it is in another piece so rotate back
+                self.image = pygame.transform.rotate(self.image, -90)
+                self.mask = pygame.mask.from_surface(self.image)
+            elif self.x + self.mask.get_rect()[2] > PIECE_BOUND_RIGHT:
                 self.x -= (self.mask.get_rect()[2] + self.x) - PIECE_BOUND_RIGHT
                 # here the logic is we get the amount of space between the border
                 # and the right side of the shape (using difference via subtraction)
@@ -87,6 +91,15 @@ class Piece:
                 # same here but its plus (to go right) and since the border is
                 # on the right of the shape instead of left we have to swap the two values positions
                 self.x += PIECE_BOUND_LEFT - (self.mask.get_rect()[0] + self.x)
+
+    def piece_within(self):
+        for set_piece in self.set_pieces:
+            for rect in self.get_shape_rects():
+                for set_rect in set_piece.get_shape_rects():
+                    # it is in the other piece
+                    if abs(rect.centerx - set_rect.centerx) <= 5 and abs(set_rect.centery - rect.centery) <= 5:
+                        return True
+        return False
 
     def handle_collisions(self):
         for set_piece in self.set_pieces:
