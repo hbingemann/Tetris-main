@@ -12,7 +12,8 @@ from PIL import Image
 # TODO: physics I think are correct at the moment but research/testing would be good
 # TODO: add holding
 # TODO: add hard drop
-# TODO: add 
+# TODO: add rotating both directions
+# TODO: when lines are removed there is a graphic
 
 pygame.init()
 
@@ -37,7 +38,7 @@ class Piece:
         self.time_between_drops = 1000  # in milliseconds
         self.time_since_move = 0
         # random.randint(1, 7)
-        self.image_file = os.path.join('img', 'piece' + str(7) + '.png')
+        self.image_file = os.path.join('img', 'piece' + str(random.randint(1, 7)) + '.png')
         self.image = pygame.image.load(self.image_file)
         self.mask = pygame.mask.from_surface(self.image)
         self.width, self.height = self.mask.get_size()
@@ -113,7 +114,7 @@ class Piece:
             self.time_since_move = 0
             # in case we go below the ground
             if self.y + self.get_mask_rect()[3] >= HEIGHT:
-                self.y = HEIGHT - self.get_mask_rect()[3]
+                self.y = HEIGHT - self.get_mask_rect()[1]
 
     def get_rect(self):
         return self.x, self.y, self.width, self.height
@@ -124,7 +125,7 @@ class Piece:
         self.time_since_move += time
 
     def get_mask_rect(self):  # unlike a pygame rect this is left top (x1, y1), bottom right (x2, y2)
-        xs = []  # and in relation to its own rectangles position
+        xs = []               # and in relation to its own rectangles position
         ys = []
         for i in range(1, self.width // TILE_SIZE + 1):
             for j in range(1, self.height // TILE_SIZE + 1):
@@ -148,7 +149,6 @@ class Piece:
         return rects
 
     def move_down(self, rows):
-        print('moving down')
         # for every row below move down tile_size
         for row in rows:
             if row > self.y + self.get_mask_rect()[1]:
@@ -156,15 +156,16 @@ class Piece:
 
     def remove_rows(self, rows):
         high = min(rows) - TILE_SIZE // 2
-        if high < self.y:
-            high = self.y
-        if high > self.y + self.height:
+        if high < self.y + self.get_mask_rect()[1]:  # its too high so lower it
+            high = self.y + self.get_mask_rect()[1]
+        if high > self.y + self.height:  # the high is under the piece
+            self.move_down(rows)
             return
         low = max(rows) + TILE_SIZE // 2
-        if low < self.y:
+        if low < self.y:  # the low is above the piece
             return
-        elif low > self.y + self.height:
-            low = self.y + self.height
+        elif low > self.y + self.get_mask_rect()[3]:  # its too low so bring it up
+            low = self.y + self.get_mask_rect()[3]
         # first get the pygame image as pillow image stored in the variable im
         pil_string_image = pygame.image.tostring(self.image, "RGBA", False)
         im = Image.frombytes("RGBA", (self.width, self.height), pil_string_image)
@@ -181,7 +182,7 @@ class Piece:
             size, mode = new_im.size, new_im.mode
             pygame_string_image = new_im.tobytes()
             self.image = pygame.image.fromstring(pygame_string_image, size, mode)
-            self.y += self.height - new_im.height
+            self.y += abs(self.height - new_im.height)
             self.update_dimensions()
         elif new_im is None:
             self.image = None
@@ -196,10 +197,13 @@ class Piece:
             return dst
         else:
             if im1.height < 10 < im2.height:
+                # only im2 is part of the image aka there is no change
                 return im2
             elif im2.height < 10 < im1.height:
+                # only im1 is part of the image aka there is no change
                 return im1
             else:
+                # im1 and im2 are both none crops
                 return None
 
 
@@ -227,14 +231,14 @@ def create_new_piece(old_piece, pieces):
     pieces.append(old_piece)
     _new_piece = Piece()
     remove_rows(pieces)
-    blits = [(set_piece.image, set_piece.get_rect()) for set_piece in pieces if set_piece.image is not None]
-    pieces = [set_piece for set_piece in pieces if set_piece.image is not None]
+    blits = [(set_piece.image, set_piece.get_rect()) for set_piece in pieces if set_piece.image is not None and pygame.mask.Mask.count(set_piece.mask) > 0]
+    pieces = [set_piece for set_piece in pieces if set_piece.image is not None and pygame.mask.Mask.count(set_piece.mask) > 0]
     _new_piece.set_pieces = pieces
     return _new_piece, blits, pieces
 
 
 def update_set_pieces(pieces):
-    updated_pieces = [set_piece for set_piece in pieces if set_piece.image is not None]
+    updated_pieces = [set_piece for set_piece in pieces if set_piece.image is not None and pygame.mask.Mask.count(set_piece.mask) > 0]
     return updated_pieces
 
 
