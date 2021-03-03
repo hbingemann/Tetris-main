@@ -125,7 +125,7 @@ class Piece:
         self.time_since_move += time
 
     def get_mask_rect(self):  # unlike a pygame rect this is left top (x1, y1), bottom right (x2, y2)
-        xs = []               # and in relation to its own rectangles position
+        xs = []  # and in relation to its own rectangles position
         ys = []
         for i in range(1, self.width // TILE_SIZE + 1):
             for j in range(1, self.height // TILE_SIZE + 1):
@@ -133,7 +133,10 @@ class Piece:
                 if self.mask.get_at((x, y)):
                     xs.extend((x - TILE_SIZE / 2, x + TILE_SIZE / 2))
                     ys.extend((y - TILE_SIZE / 2, y + TILE_SIZE / 2))
-        return min(xs), min(ys), max(xs), max(ys)  # returns x1, y1, x2, y2
+        if len(xs) > 0:
+            return min(xs), min(ys), max(xs), max(ys)  # returns x1, y1, x2, y2
+        else:
+            return self.width, self.height, self.width, self.height
 
     def get_shape_rects(self):  # this will return all rectangles in the shape
         rects = []
@@ -151,7 +154,7 @@ class Piece:
     def move_down(self, rows):
         # for every row below move down tile_size
         for row in rows:
-            if row > self.y + self.get_mask_rect()[1]:
+            if row > self.y + self.get_mask_rect()[3]:
                 self.y += TILE_SIZE
 
     def remove_rows(self, rows):
@@ -184,6 +187,7 @@ class Piece:
             self.image = pygame.image.fromstring(pygame_string_image, size, mode)
             self.y += abs(self.height - new_im.height)
             self.update_dimensions()
+            self.move_down(rows)
         elif new_im is None:
             self.image = None
         elif new_im.height == self.height:  # the image was unaffected by removed rows
@@ -220,7 +224,7 @@ def remove_rows(pieces):
     # all y positions (rows) with ten squares
     ys.sort()
     groups = [list(j) for i, j in itertools.groupby(ys)]
-    rows = [group[0] for group in groups if len(group) == 10]
+    rows = [group[0] for group in groups if len(group) >= 10]
     if len(rows) > 0:  # if there are rows to be removed
         for set_piece in pieces:
             set_piece.remove_rows(rows)
@@ -231,14 +235,17 @@ def create_new_piece(old_piece, pieces):
     pieces.append(old_piece)
     _new_piece = Piece()
     remove_rows(pieces)
-    blits = [(set_piece.image, set_piece.get_rect()) for set_piece in pieces if set_piece.image is not None and pygame.mask.Mask.count(set_piece.mask) > 0]
-    pieces = [set_piece for set_piece in pieces if set_piece.image is not None and pygame.mask.Mask.count(set_piece.mask) > 0]
+    blits = [(set_piece.image, set_piece.get_rect()) for set_piece in pieces if
+             set_piece.image is not None and pygame.mask.Mask.count(set_piece.mask) > 0]
+    pieces = [set_piece for set_piece in pieces if
+              set_piece.image is not None and pygame.mask.Mask.count(set_piece.mask) > 0]
     _new_piece.set_pieces = pieces
     return _new_piece, blits, pieces
 
 
 def update_set_pieces(pieces):
-    updated_pieces = [set_piece for set_piece in pieces if set_piece.image is not None and pygame.mask.Mask.count(set_piece.mask) > 0]
+    updated_pieces = [set_piece for set_piece in pieces if
+                      set_piece.image is not None and pygame.mask.Mask.count(set_piece.mask) > 0]
     return updated_pieces
 
 
@@ -291,7 +298,12 @@ if __name__ == '__main__':  # running the game
             # see if it has collided with other pieces from bottom
             if piece.handle_collisions():
                 # if so set it down and create a new piece
-                piece, set_piece_blits, set_pieces = create_new_piece(piece, set_pieces)
+                if piece.y == 0:
+                    set_piece_blits = []
+                    set_pieces = []
+                    piece = Piece()
+                else:
+                    piece, set_piece_blits, set_pieces = create_new_piece(piece, set_pieces)
 
         # move piece
         piece.handle_movement()
