@@ -167,7 +167,7 @@ class Piece:
     def move_down(self, rows):
         # for every row below move down tile_size
         for row in rows:
-            if row > self.y + self.get_mask_rect()[3]:
+            if row > self.y + self.get_mask_rect()[1]:
                 self.y += TILE_SIZE
 
     def remove_rows(self, rows):
@@ -194,11 +194,10 @@ class Piece:
         # now concatenate or combine them
         new_im = self.get_concat(top, bottom)
         # now convert back to pygame image and update the pieces image
-        if new_im is not None and new_im.height != self.height:
+        if new_im is not None and new_im.height != self.height:  # two images were cropped together
             size, mode = new_im.size, new_im.mode
             pygame_string_image = new_im.tobytes()
             self.image = pygame.image.fromstring(pygame_string_image, size, mode)
-            self.y += abs(self.height - new_im.height)
             self.update_dimensions()
             self.move_down(rows)
         elif new_im is None:
