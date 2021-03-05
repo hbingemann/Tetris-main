@@ -8,7 +8,6 @@ import itertools
 from PIL import Image
 
 # TODO: better graphics
-# TODO: rotations don't turn pieces into each other, and if they do move piece over
 # TODO: pieces don't instantly place themselves 
 # TODO: physics I think are correct at the moment but research/testing would be good
 # TODO: add holding
@@ -249,7 +248,7 @@ class Piece:
 # --------- FUNCTIONS -------------------------------------------------------
 #
 
-
+# TODO: make less hardcode so make it so all columns must be filled for row to be removed
 def remove_rows(pieces):
     ys = []
     for set_piece in pieces:
