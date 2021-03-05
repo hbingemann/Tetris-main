@@ -8,6 +8,7 @@ import itertools
 from PIL import Image
 
 # TODO: better graphics
+# TODO: rotations don't turn pieces into each other, and if they do move piece over
 # TODO: pieces don't instantly place themselves 
 # TODO: physics I think are correct at the moment but research/testing would be good
 # TODO: add holding
@@ -38,7 +39,7 @@ class Piece:
         self.time_between_drops = 1000  # in milliseconds
         self.time_since_move = 0
         # random.randint(1, 7)
-        self.image_file = os.path.join('img', 'piece' + str(random.randint(1, 7)) + '.png')
+        self.image_file = os.path.join('img', 'piece' + str(7) + '.png')
         self.image = pygame.image.load(self.image_file)
         self.mask = pygame.mask.from_surface(self.image)
         self.width, self.height = self.mask.get_size()
@@ -77,11 +78,17 @@ class Piece:
         if key == "up":
             self.image = pygame.transform.rotate(self.image, 90)
             self.mask = pygame.mask.from_surface(self.image)
-            # if a rotation puts the piece out of bounds move piece over
+            # if a rotation puts the piece in another piece move piece over
+
+            # maybe make a function that does all of these
+
             if self.piece_within():
-                # it is in another piece so rotate back
-                self.image = pygame.transform.rotate(self.image, -90)
-                self.mask = pygame.mask.from_surface(self.image)
+                # it is in another piece so check if it can be moved out of it otherwise move it back
+                if not self.move_out_of_pieces():
+                    # it can't be moved out of other pieces so rotate back
+                    self.image = pygame.transform.rotate(self.image, -90)
+                    self.mask = pygame.mask.from_surface(self.image)
+            # if a rotation puts the piece out of bounds move piece over
             elif self.x + self.mask.get_rect()[2] > PIECE_BOUND_RIGHT:
                 self.x -= (self.mask.get_rect()[2] + self.x) - PIECE_BOUND_RIGHT
                 # here the logic is we get the amount of space between the border
@@ -91,6 +98,21 @@ class Piece:
                 # same here but its plus (to go right) and since the border is
                 # on the right of the shape instead of left we have to swap the two values positions
                 self.x += PIECE_BOUND_LEFT - (self.mask.get_rect()[0] + self.x)
+
+    def move_out_of_pieces(self):
+        vel = 0
+        prev_x = self.x
+        for i in range(1, 5):
+            if i % 2 == 0:
+                # it is even
+                vel -= i
+            else:
+                vel += i
+            self.x += vel * TILE_SIZE
+            if not self.piece_within():
+                return True
+        self.x = prev_x
+        return False
 
     def piece_within(self):
         for set_piece in self.set_pieces:
