@@ -38,7 +38,7 @@ class Piece:
         self.time_between_drops = 1000  # in milliseconds
         self.time_since_move = 0
         # random.randint(1, 7)
-        self.image_file = os.path.join('img', 'piece' + str(7) + '.png')
+        self.image_file = os.path.join('img', 'piece' + str(random.randint(1, 7)) + '.png')
         self.image = pygame.image.load(self.image_file)
         self.mask = pygame.mask.from_surface(self.image)
         self.width, self.height = self.mask.get_size()
@@ -82,7 +82,7 @@ class Piece:
             # maybe make a function that does all of these
 
             if self.piece_within():
-                # it is in another piece so check if it can be moved out of it otherwise move it back
+                # it is in another piece so check if it can be moved out of it otherwise rotate it back
                 if not self.move_out_of_pieces():
                     # it can't be moved out of other pieces so rotate back
                     self.image = pygame.transform.rotate(self.image, -90)
@@ -193,16 +193,16 @@ class Piece:
 
     def remove_rows(self, rows):
         high = min(rows) - TILE_SIZE // 2
-        if high < self.y + self.get_mask_rect()[1]:  # its too high so lower it
-            high = self.y + self.get_mask_rect()[1]
+        if high < self.y:  # its too high so lower it
+            high = self.y
         if high > self.y + self.height:  # the high is under the piece
             self.move_down(rows)
             return
         low = max(rows) + TILE_SIZE // 2
         if low < self.y:  # the low is above the piece
             return
-        elif low > self.y + self.get_mask_rect()[3]:  # its too low so bring it up
-            low = self.y + self.get_mask_rect()[3]
+        elif low > self.y + self.height:  # its too low so bring it up
+            low = self.y + self.height
         # first get the pygame image as pillow image stored in the variable im
         pil_string_image = pygame.image.tostring(self.image, "RGBA", False)
         im = Image.frombytes("RGBA", (self.width, self.height), pil_string_image)
@@ -250,14 +250,27 @@ class Piece:
 
 # TODO: make less hardcode so make it so all columns must be filled for row to be removed
 def remove_rows(pieces):
-    ys = []
+    poss = []
     for set_piece in pieces:
         for rect in set_piece.get_shape_rects():
-            ys.append(rect.centery)
+            poss.append((rect.centerx, rect.centery))
     # all y positions (rows) with ten squares
+    ys = [pos[1] for pos in poss]
     ys.sort()
     groups = [list(j) for i, j in itertools.groupby(ys)]
     rows = [group[0] for group in groups if len(group) >= 10]
+    # check every row if it has 10 different xs (full row)
+    print(rows)
+    for row in rows:
+        count = 0
+        # loop through all x positions between the piece bounds
+        for i in range(10):
+            x = (PIECE_BOUND_LEFT + TILE_SIZE//2) + TILE_SIZE * i
+            if (x, row) in poss:
+                count += 1
+        if not count == 10:
+            rows.remove(row)
+    print('after check: ' + str(rows))
     if len(rows) > 0:  # if there are rows to be removed
         for set_piece in pieces:
             set_piece.remove_rows(rows)
