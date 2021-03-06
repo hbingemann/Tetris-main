@@ -22,9 +22,10 @@ BACKGROUND = pygame.image.load(os.path.join('img', 'Background.png'))
 TILE_SIZE = 32
 SIZE = WIDTH, HEIGHT = 640, 640
 PIECE_BOUNDS = PIECE_BOUND_LEFT, PIECE_BOUND_RIGHT = 160, 480
-BLACK = 0, 0, 0
-GREEN = 0, 100, 0
+WHITE = 220, 220, 220
 FPS = 60
+ROW_SCORES = [1, 3, 6, 12]
+score = 0
 
 
 #
@@ -38,7 +39,7 @@ class Piece:
         self.time_between_drops = 1000  # in milliseconds
         self.time_since_move = 0
         # random.randint(1, 7)
-        self.image_file = os.path.join('img', 'piece' + str(7) + '.png')
+        self.image_file = os.path.join('img', 'piece' + str(random.randint(1, 7)) + '.png')
         self.image = pygame.image.load(self.image_file)
         self.mask = pygame.mask.from_surface(self.image)
         self.width, self.height = self.mask.get_size()
@@ -81,22 +82,32 @@ class Piece:
 
             # maybe make a function that does all of these
 
-            if self.piece_within():
-                # it is in another piece so check if it can be moved out of it otherwise rotate it back
+            if self.piece_overlaps():
+                # it is in another piece so check if it can be moved out easily of it otherwise rotate it back
                 if not self.move_out_of_pieces():
                     # it can't be moved out of other pieces so rotate back
                     self.image = pygame.transform.rotate(self.image, -90)
                     self.mask = pygame.mask.from_surface(self.image)
             # if a rotation puts the piece out of bounds move piece over
             elif self.x + self.mask.get_rect()[2] > PIECE_BOUND_RIGHT:
-                self.x -= (self.mask.get_rect()[2] + self.x) - PIECE_BOUND_RIGHT
+                change = (self.mask.get_rect()[2] + self.x) - PIECE_BOUND_RIGHT
+                self.x -= change
+                if self.piece_overlaps():
+                    self.x += change
+                    self.image = pygame.transform.rotate(self.image, -90)
+                    self.mask = pygame.mask.from_surface(self.image)
                 # here the logic is we get the amount of space between the border
                 # and the right side of the shape (using difference via subtraction)
                 # and move it to the left (-) by that amount
             elif self.x + self.mask.get_rect()[0] < PIECE_BOUND_LEFT:
                 # same here but its plus (to go right) and since the border is
                 # on the right of the shape instead of left we have to swap the two values positions
-                self.x += PIECE_BOUND_LEFT - (self.mask.get_rect()[0] + self.x)
+                change = PIECE_BOUND_LEFT - (self.mask.get_rect()[0] + self.x)
+                self.x += change
+                if self.piece_overlaps():
+                    self.x -= change
+                    self.image = pygame.transform.rotate(self.image, -90)
+                    self.mask = pygame.mask.from_surface(self.image)
 
     def move_out_of_pieces(self):
         vel = 0
@@ -108,20 +119,25 @@ class Piece:
             else:
                 vel += i
             self.x += vel * TILE_SIZE
-            if not self.piece_within():
+            if not self.piece_overlaps() and not self.out_of_bounds():
                 return True
         self.x = prev_x
         return False
 
-    def piece_within(self):
+    def piece_overlaps(self):
         for set_piece in self.set_pieces:
             for rect in self.get_shape_rects():
                 for set_rect in set_piece.get_shape_rects():
                     # it is in the other piece
                     if abs(rect.centerx - set_rect.centerx) <= 5 and abs(set_rect.centery - rect.centery) <= 5:
-                        if self.x + self.get_mask_rect()[3] < PIECE_BOUND_RIGHT and self.x + self.get_mask_rect()[1] > PIECE_BOUND_LEFT:
-                            return True
+                        return True
         return False
+
+    def out_of_bounds(self):
+        if self.x + self.get_mask_rect()[2] <= PIECE_BOUND_RIGHT and self.x + self.get_mask_rect()[0] >= PIECE_BOUND_LEFT:
+            return False
+        else:
+            return True
 
     def handle_collisions(self):
         for set_piece in self.set_pieces:
@@ -173,14 +189,12 @@ class Piece:
         else:
             return self.width, self.height, self.width, self.height
 
-    def get_shape_rects(self):  # this will return all rectangles in the shape
+    def get_shape_rects(self):  # this will return all tile squares in the shape
         rects = []
         for i in range(1, self.width // TILE_SIZE + 1):
             for j in range(1, self.height // TILE_SIZE + 1):
                 x, y = i * TILE_SIZE - TILE_SIZE // 2, j * TILE_SIZE - TILE_SIZE // 2
                 if self.mask.get_at((x, y)):
-                    # added a one pixel buffer because to the rect because it hasn't collided
-                    # until the shape is in the other shape
                     rect = (self.x + x - (TILE_SIZE // 2), self.y + y - (TILE_SIZE // 2),
                             TILE_SIZE, TILE_SIZE)
                     rects.append(pygame.Rect(rect))
@@ -250,6 +264,7 @@ class Piece:
 #
 
 def remove_rows(pieces):
+    global score
     poss = []
     for set_piece in pieces:
         for rect in set_piece.get_shape_rects():
@@ -274,13 +289,17 @@ def remove_rows(pieces):
     if len(rows) > 0:  # if there are rows to be removed
         for set_piece in pieces:
             set_piece.remove_rows(rows)
+        score += ROW_SCORES[len(rows) - 1]
     return
 
 
 def create_new_piece(old_piece, pieces):
+    remove_rows(pieces)
     pieces.append(old_piece)
     _new_piece = Piece()
-    remove_rows(pieces)
+    speed = score // 10 + 1
+    delay = 1000 // speed
+    _new_piece.time_between_drops = delay
     blits = [(set_piece.image, set_piece.get_rect()) for set_piece in pieces if
              set_piece.image is not None and pygame.mask.Mask.count(set_piece.mask) > 0]
     pieces = [set_piece for set_piece in pieces if
@@ -330,7 +349,7 @@ if __name__ == '__main__':  # running the game
             elif event.type == pygame.KEYDOWN:
                 piece.handle_key_press(event.key)
 
-        # check if key was pressed
+        # check if key was pressed (key press repeats)
         pressed = pygame.key.get_pressed()
         piece.handle_keys_down(pressed)
 
@@ -348,15 +367,23 @@ if __name__ == '__main__':  # running the game
                     set_piece_blits = []
                     set_pieces = []
                     piece = Piece()
+                    score = 0
                 else:
                     piece, set_piece_blits, set_pieces = create_new_piece(piece, set_pieces)
 
         # move piece
         piece.handle_movement()
 
+        # keeps track of score
+        score_font = pygame.font.Font(pygame.font.get_default_font(), TILE_SIZE)
+        score_text = score_font.render('Score', True, WHITE)
+        score_value = score_font.render(str(score), True, WHITE)
+
         # update screen
         set_pieces = update_set_pieces(set_pieces)
         screen.blit(BACKGROUND, (0, 0))
+        screen.blit(score_text, (10, 400))
+        screen.blit(score_value, (10, 440))
         screen.blit(piece.image, piece.get_rect())
         screen.blits(set_piece_blits)
         pygame.display.update()
