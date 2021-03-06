@@ -3,6 +3,7 @@ import pygame
 import random
 import os
 import itertools
+import math
 
 # import numpy as np
 from PIL import Image
@@ -23,6 +24,8 @@ TILE_SIZE = 32
 SIZE = WIDTH, HEIGHT = 640, 640
 PIECE_BOUNDS = PIECE_BOUND_LEFT, PIECE_BOUND_RIGHT = 160, 480
 WHITE = 220, 220, 220
+RED = 200, 30, 30
+BLACK = 0, 0, 0
 FPS = 60
 ROW_SCORES = [1, 3, 6, 12]
 score = 0
@@ -294,9 +297,9 @@ def remove_rows(pieces):
 
 
 def create_new_piece(old_piece, pieces):
-    remove_rows(pieces)
     pieces.append(old_piece)
     _new_piece = Piece()
+    remove_rows(pieces)
     speed = score // 10 + 1
     delay = 1000 // speed
     _new_piece.time_between_drops = delay
@@ -321,7 +324,6 @@ def update_set_pieces(pieces):
 
 if __name__ == '__main__':  # running the game
     # setting some values that will be useful
-
     screen = pygame.display.set_mode(SIZE)
     pygame.display.set_caption('TETRIS')
 
@@ -364,10 +366,46 @@ if __name__ == '__main__':  # running the game
             if piece.handle_collisions():
                 # if so set it down and create a new piece
                 if piece.y == 0:
+
+                    #
+                    #  --------------  GAME OVER  ------------------------
+                    #
+
+                    waiting_for_input = True
+
+                    game_over_font = pygame.font.Font(pygame.font.get_default_font(), 90)
+                    info_font = pygame.font.Font(pygame.font.get_default_font(), 30)
+                    game_over_text = game_over_font.render('GAME OVER', True, RED)
+                    reset_info = info_font.render('insert coin (r)', True, WHITE, BLACK)
+
+                    # update screen
+                    screen.blit(game_over_text, (WIDTH / 2 - game_over_text.get_width() / 2, HEIGHT / 3))
+                    screen.blit(reset_info, (WIDTH / 2 - reset_info.get_width() / 2, HEIGHT / 2))
+                    pygame.display.update()
+
+                    while waiting_for_input:
+                        for event in pygame.event.get():
+
+                            # close window
+                            if event.type == pygame.QUIT:
+                                waiting_for_input = False
+                                run = False
+
+                            # for single key presses
+                            elif event.type == pygame.KEYDOWN:
+                                key = pygame.key.name(event.key)
+                                if key == "r":
+                                    waiting_for_input = False
+
+                    piece = Piece()
                     set_piece_blits = []
                     set_pieces = []
-                    piece = Piece()
                     score = 0
+
+                    #
+                    #  --------------  GAME OVER  -----------------------
+                    #
+
                 else:
                     piece, set_piece_blits, set_pieces = create_new_piece(piece, set_pieces)
 
