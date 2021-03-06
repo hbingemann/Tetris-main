@@ -38,7 +38,7 @@ class Piece:
         self.time_between_drops = 1000  # in milliseconds
         self.time_since_move = 0
         # random.randint(1, 7)
-        self.image_file = os.path.join('img', 'piece' + str(random.randint(1, 7)) + '.png')
+        self.image_file = os.path.join('img', 'piece' + str(7) + '.png')
         self.image = pygame.image.load(self.image_file)
         self.mask = pygame.mask.from_surface(self.image)
         self.width, self.height = self.mask.get_size()
@@ -119,7 +119,8 @@ class Piece:
                 for set_rect in set_piece.get_shape_rects():
                     # it is in the other piece
                     if abs(rect.centerx - set_rect.centerx) <= 5 and abs(set_rect.centery - rect.centery) <= 5:
-                        return True
+                        if self.x + self.get_mask_rect()[3] < PIECE_BOUND_RIGHT and self.x + self.get_mask_rect()[1] > PIECE_BOUND_LEFT:
+                            return True
         return False
 
     def handle_collisions(self):
@@ -248,7 +249,6 @@ class Piece:
 # --------- FUNCTIONS -------------------------------------------------------
 #
 
-# TODO: make less hardcode so make it so all columns must be filled for row to be removed
 def remove_rows(pieces):
     poss = []
     for set_piece in pieces:
