@@ -27,7 +27,8 @@ WHITE = 220, 220, 220
 RED = 200, 30, 30
 BLACK = 0, 0, 0
 FPS = 60
-ROW_SCORES = [1, 3, 6, 12]
+SPEED_INCREMENT = 10  # every time a multiple of this number is reached increase speed
+ROW_SCORES = [1, 3, 6, 10]
 score = 0
 
 
@@ -37,12 +38,12 @@ score = 0
 
 
 class Piece:
-    def __init__(self):
+    def __init__(self, image):
         self.start = self.x, self.y = WIDTH / 2 // TILE_SIZE * TILE_SIZE - TILE_SIZE, 0
         self.time_between_drops = 1000  # in milliseconds
         self.time_since_move = 0
         # random.randint(1, 7)
-        self.image_file = os.path.join('img', 'piece' + str(random.randint(1, 7)) + '.png')
+        self.image_file = image
         self.image = pygame.image.load(self.image_file)
         self.mask = pygame.mask.from_surface(self.image)
         self.width, self.height = self.mask.get_size()
@@ -296,11 +297,11 @@ def remove_rows(pieces):
     return
 
 
-def create_new_piece(old_piece, pieces):
+def create_new_piece(old_piece, pieces, image):
     pieces.append(old_piece)
-    _new_piece = Piece()
+    _new_piece = Piece(image)
     remove_rows(pieces)
-    speed = score // 10 + 1
+    speed = score // SPEED_INCREMENT + 1
     delay = 1000 // speed
     _new_piece.time_between_drops = delay
     blits = [(set_piece.image, set_piece.get_rect()) for set_piece in pieces if
@@ -308,7 +309,7 @@ def create_new_piece(old_piece, pieces):
     pieces = [set_piece for set_piece in pieces if
               set_piece.image is not None and pygame.mask.Mask.count(set_piece.mask) > 0]
     _new_piece.set_pieces = pieces
-    return _new_piece, blits, pieces
+    return _new_piece, blits, pieces, os.path.join('img', 'piece' + str(random.randint(1, 7)) + '.png')
 
 
 def update_set_pieces(pieces):
@@ -328,7 +329,8 @@ if __name__ == '__main__':  # running the game
     pygame.display.set_caption('TETRIS')
 
     # creating the first piece
-    piece = Piece()
+    next_piece = os.path.join('img', 'piece' + str(random.randint(1, 7)) + '.png')
+    piece = Piece(os.path.join('img', 'piece' + str(random.randint(1, 7)) + '.png'))
     set_piece_blits = []
     set_pieces = []
 
@@ -360,7 +362,7 @@ if __name__ == '__main__':  # running the game
         if piece.y + y2 >= HEIGHT:
             piece.y = HEIGHT - y2
             # create a new piece because it touched the bottom
-            piece, set_piece_blits, set_pieces = create_new_piece(piece, set_pieces)
+            piece, set_piece_blits, set_pieces, next_piece = create_new_piece(piece, set_pieces, next_piece)
         else:
             # see if it has collided with other pieces from bottom
             if piece.handle_collisions():
@@ -397,7 +399,8 @@ if __name__ == '__main__':  # running the game
                                 if key == "r":
                                     waiting_for_input = False
 
-                    piece = Piece()
+                    next_piece = os.path.join('img', 'piece' + str(random.randint(1, 7)) + '.png')
+                    piece = Piece(os.path.join('img', 'piece' + str(random.randint(1, 7)) + '.png'))
                     set_piece_blits = []
                     set_pieces = []
                     score = 0
@@ -407,7 +410,7 @@ if __name__ == '__main__':  # running the game
                     #
 
                 else:
-                    piece, set_piece_blits, set_pieces = create_new_piece(piece, set_pieces)
+                    piece, set_piece_blits, set_pieces, next_piece = create_new_piece(piece, set_pieces, next_piece)
 
         # move piece
         piece.handle_movement()
@@ -422,8 +425,9 @@ if __name__ == '__main__':  # running the game
         screen.blit(BACKGROUND, (0, 0))
         screen.blit(score_text, (10, 400))
         screen.blit(score_value, (10, 440))
-        screen.blit(piece.image, piece.get_rect())
+        screen.blit(pygame.image.load(next_piece), (500, 50))
         screen.blits(set_piece_blits)
+        screen.blit(piece.image, piece.get_rect())
         pygame.display.update()
 
     pygame.quit()
