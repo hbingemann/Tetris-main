@@ -42,7 +42,7 @@ class Piece:
         self.start = self.x, self.y = WIDTH / 2 // TILE_SIZE * TILE_SIZE - TILE_SIZE, 0
         self.time_between_drops = 1000  # in milliseconds
         self.time_since_move = 0
-        # random.randint(1, 7)
+        # 7
         self.image_file = image
         self.image = pygame.image.load(self.image_file)
         self.mask = pygame.mask.from_surface(self.image)
@@ -222,6 +222,11 @@ class Piece:
             return
         elif low > self.y + self.height:  # its too low so bring it up
             low = self.y + self.height
+        # the middle is the highest of the rows between high and low that arent in rows to the lowest of the rows that
+        centers = [row for row in rows if row is not high and row is not low]
+        if len(centers) > 0:
+            mid_top = max(centers) + TILE_SIZE // 2
+            mid_bottom = min(centers) - TILE_SIZE // 2
         # first get the pygame image as pillow image stored in the variable im
         pil_string_image = pygame.image.tostring(self.image, "RGBA", False)
         im = Image.frombytes("RGBA", (self.width, self.height), pil_string_image)
@@ -309,7 +314,7 @@ def create_new_piece(old_piece, pieces, image):
     pieces = [set_piece for set_piece in pieces if
               set_piece.image is not None and pygame.mask.Mask.count(set_piece.mask) > 0]
     _new_piece.set_pieces = pieces
-    return _new_piece, blits, pieces, os.path.join('img', 'piece' + str(random.randint(1, 7)) + '.png')
+    return _new_piece, blits, pieces, os.path.join('img', 'piece' + str(7) + '.png')
 
 
 def update_set_pieces(pieces):
@@ -329,8 +334,8 @@ if __name__ == '__main__':  # running the game
     pygame.display.set_caption('TETRIS')
 
     # creating the first piece
-    next_piece = os.path.join('img', 'piece' + str(random.randint(1, 7)) + '.png')
-    piece = Piece(os.path.join('img', 'piece' + str(random.randint(1, 7)) + '.png'))
+    next_piece = os.path.join('img', 'piece' + str(7) + '.png')
+    piece = Piece(os.path.join('img', 'piece' + str(7) + '.png'))
     set_piece_blits = []
     set_pieces = []
 
@@ -399,8 +404,8 @@ if __name__ == '__main__':  # running the game
                                 if key == "r":
                                     waiting_for_input = False
 
-                    next_piece = os.path.join('img', 'piece' + str(random.randint(1, 7)) + '.png')
-                    piece = Piece(os.path.join('img', 'piece' + str(random.randint(1, 7)) + '.png'))
+                    next_piece = os.path.join('img', 'piece' + str(7) + '.png')
+                    piece = Piece(os.path.join('img', 'piece' + str(7) + '.png'))
                     set_piece_blits = []
                     set_pieces = []
                     score = 0
