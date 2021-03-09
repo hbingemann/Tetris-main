@@ -19,10 +19,10 @@ from PIL import Image
 pygame.init()
 
 # set some global constants
-BACKGROUND = pygame.image.load(os.path.join('img', 'Background.png'))
+BACKGROUND = pygame.image.load(os.path.join('img', 'Background2.png'))
 TILE_SIZE = 32
-SIZE = WIDTH, HEIGHT = 640, 640
-PIECE_BOUNDS = PIECE_BOUND_LEFT, PIECE_BOUND_RIGHT = 160, 480
+SIZE = WIDTH, HEIGHT = BACKGROUND.get_width(), BACKGROUND.get_height()
+PIECE_BOUNDS = PIECE_BOUND_LEFT, PIECE_BOUND_RIGHT = (WIDTH - 10 * TILE_SIZE) // 2, WIDTH - (WIDTH - 10 * TILE_SIZE) // 2
 WHITE = 220, 220, 220
 RED = 200, 30, 30
 BLACK = 0, 0, 0
@@ -425,7 +425,7 @@ if __name__ == '__main__':  # running the game
         screen.blit(BACKGROUND, (0, 0))
         screen.blit(score_text, (10, 400))
         screen.blit(score_value, (10, 440))
-        screen.blit(pygame.image.load(next_piece), (500, 50))
+        screen.blit(pygame.image.load(next_piece), (WIDTH - 100 - pygame.image.load(next_piece).get_width() // 2, 80))
         screen.blits(set_piece_blits)
         screen.blit(piece.image, piece.get_rect())
         pygame.display.update()
