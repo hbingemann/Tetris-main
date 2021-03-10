@@ -27,6 +27,7 @@ WHITE = 220, 220, 220
 RED = 200, 30, 30
 BLACK = 0, 0, 0
 FPS = 60
+NUMBER_OF_PIECES = 7
 SPEED_INCREMENT = 10  # every time a multiple of this number is reached increase speed
 ROW_SCORES = [1, 3, 6, 10]
 score = 0
@@ -331,7 +332,7 @@ def create_new_piece(old_piece, pieces, image):
     pieces = [set_piece for set_piece in pieces if
               set_piece.image is not None and pygame.mask.Mask.count(set_piece.mask) > 0]
     _new_piece.set_pieces = pieces
-    return _new_piece, blits, pieces, os.path.join('img', 'piece' + str(7) + '.png')
+    return _new_piece, blits, pieces, os.path.join('img', 'piece' + str(random.randint(1, NUMBER_OF_PIECES)) + '.png')
 
 
 def update_set_pieces(pieces):
@@ -351,8 +352,8 @@ if __name__ == '__main__':  # running the game
     pygame.display.set_caption('TETRIS')
 
     # creating the first piece
-    next_piece = os.path.join('img', 'piece' + str(7) + '.png')
-    piece = Piece(os.path.join('img', 'piece' + str(7) + '.png'))
+    next_piece = os.path.join('img', 'piece' + str(random.randint(1, NUMBER_OF_PIECES)) + '.png')
+    piece = Piece(os.path.join('img', 'piece' + str(random.randint(1, NUMBER_OF_PIECES)) + '.png'))
     set_piece_blits = []
     set_pieces = []
 
@@ -421,8 +422,8 @@ if __name__ == '__main__':  # running the game
                                 if key == "r":
                                     waiting_for_input = False
 
-                    next_piece = os.path.join('img', 'piece' + str(7) + '.png')
-                    piece = Piece(os.path.join('img', 'piece' + str(7) + '.png'))
+                    next_piece = os.path.join('img', 'piece' + str(random.randint(1, NUMBER_OF_PIECES)) + '.png')
+                    piece = Piece(os.path.join('img', 'piece' + str(random.randint(1, NUMBER_OF_PIECES)) + '.png'))
                     set_piece_blits = []
                     set_pieces = []
                     score = 0
