@@ -207,7 +207,7 @@ class Piece:
     def move_down(self, rows):
         # for every row below move down tile_size
         for row in rows:
-            if row > self.y + self.get_mask_rect()[1]:
+            if row > self.y:
                 self.y += TILE_SIZE
 
     def remove_rows(self, rows):
@@ -222,50 +222,67 @@ class Piece:
             return
         elif low > self.y + self.height:  # its too low so bring it up
             low = self.y + self.height
-        # the middle is the highest of the rows between high and low that arent in rows to the lowest of the rows that
-        centers = [row for row in rows if row is not high and row is not low]
-        if len(centers) > 0:
-            mid_top = max(centers) + TILE_SIZE // 2
-            mid_bottom = min(centers) - TILE_SIZE // 2
+        # the middle is the highest of the rows between high and low that arent in rows
+        # for row between high and low
+        # if row not in rows
+        betweens = [row for row in range(int(high + TILE_SIZE // 2), int(low - TILE_SIZE // 2), int(TILE_SIZE)) if row not in rows]
+        mid_top = min(betweens) - TILE_SIZE // 2 if len(betweens) > 0 else None
+        mid_bottom = max(betweens) + TILE_SIZE // 2 if len(betweens) > 0 else None
         # first get the pygame image as pillow image stored in the variable im
         pil_string_image = pygame.image.tostring(self.image, "RGBA", False)
         im = Image.frombytes("RGBA", (self.width, self.height), pil_string_image)
         # now define upper and lower regions to crop
         upper = (0, 0, self.width, high - self.y)
+        mid = (0, mid_top - self.y, self.width, mid_bottom - self.y) if mid_top is not None else None
         lower = (0, low - self.y, self.width, self.height)
         # get those new regions as new images
         top = im.crop(upper)
+        middle = im.crop(mid) if mid is not None else None
         bottom = im.crop(lower)
         # now concatenate or combine them
-        new_im = self.get_concat(top, bottom)
+        new_im = self.get_concat(top, bottom, middle)
         # now convert back to pygame image and update the pieces image
-        if new_im is not None and new_im.height != self.height:  # two images were cropped together
-            size, mode = new_im.size, new_im.mode
-            pygame_string_image = new_im.tobytes()
-            self.image = pygame.image.fromstring(pygame_string_image, size, mode)
-            self.update_dimensions()
-            self.move_down(rows)
-        elif new_im is None:
-            self.image = None
-        elif new_im.height == self.height:  # the image was unaffected by removed rows
-            self.move_down(rows)
-
-    def get_concat(self, im1, im2):  # this merges images on top of each other
-        if im1.height > 10 and im2.height > 10:
-            dst = Image.new('RGBA', (im1.width, im1.height + im2.height))
-            dst.paste(im1, (0, 0))
-            dst.paste(im2, (0, im1.height))
-            return dst
+        if new_im is not None and new_im.height > 0:
+            if new_im is not None and new_im.height != self.height:  # two images were cropped together
+                size, mode = new_im.size, new_im.mode
+                pygame_string_image = new_im.tobytes()
+                self.image = pygame.image.fromstring(pygame_string_image, size, mode)
+                self.update_dimensions()
+                self.move_down(rows)
+            elif new_im is None:  # everything was removed
+                self.image = None
+            elif new_im.height == self.height:  # the image was unaffected by removed rows
+                self.move_down(rows)
         else:
-            if im1.height < 10 < im2.height:
-                # only im2 is part of the image aka there is no change
-                return im2
-            elif im2.height < 10 < im1.height:
-                # only im1 is part of the image aka there is no change
-                return im1
-            else:
-                # im1 and im2 are both none crops
-                return None
+            self.image = None
+
+    def get_concat(self, im1, im2, im3):  # this merges images on top of each other
+        # im1 is top, im2 is bottom and im3 is middle
+        if im1.height > 10 or im2.height > 10 or im3 is not None:  # are any valid images?
+            dst = None
+            if im3 is not None:  # if there is a middle
+                if im1.height > 10:  # if theres a top and middle
+                    dst = Image.new('RGBA', (im1.width, im1.height + im3.height))
+                    dst.paste(im1, (0, 0))
+                    dst.paste(im3, (0, im1.height))
+                elif im2.height > 10:  # if theres a middle and bottom
+                    dst = Image.new('RGBA', (im2.width, im3.height + im2.height))
+                    dst.paste(im3, (0, 0))
+                    dst.paste(im2, (0, im3.height))
+                else:  # otherwise its just a middle
+                    return im3
+            else:  # there is no middle
+                if im1.height > 10 and im2.height > 10:  # theres a top and bottom
+                    dst = Image.new('RGBA', (im1.width, im1.height + im2.height))
+                    dst.paste(im1, (0, 0))
+                    dst.paste(im2, (0, im1.height))
+                elif im2.height < 10 < im1.height:  # only a top
+                    return im1
+                elif im1.height < 10 < im2.height:  # only a bottom
+                    return im2
+            return dst
+        else:  # there are no valid crops
+            return None
 
 
 #
